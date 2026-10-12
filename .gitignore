@@ -1,0 +1,6 @@
+.Rhistory
+.RData
+.Rproj.user
+*.tar.gz
+*.Rcheck/
+README_files/advice_output.txt
