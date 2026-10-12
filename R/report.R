@@ -18,8 +18,8 @@ advice_report <- function(ad) {
   for (i in seq_len(nrow(ad))) {
     cat(sprintf("#%d %s(%s)  %s\n", ad$rank[i], ad$name[i], ad$code[i],
                 .stars(ad$total[i])))
-    cat(sprintf("   \u73b0\u4ef7 %.2f  \u6da8\u8dcc %+.2f%%  |  \u8d8b\u52bf %.0f  \u4f30\u503c %.0f  \u52a8\u91cf %.0f  =>  \u7efc\u5408 %.1f  [%s]\n",
-                ad$price[i], ad$pct_chg[i], ad$trend[i], ad$value[i],
+    cat(sprintf("   \u73b0\u4ef7 %.2f  \u6da8\u8dcc %+.2f%%  \u4fe1\u53f7 %s  |  \u8d8b\u52bf %.0f  \u4f30\u503c %.0f  \u52a8\u91cf %.0f  =>  \u7efc\u5408 %.1f  [%s]\n",
+                ad$price[i], ad$pct_chg[i], ad$signal[i], ad$trend[i], ad$value[i],
                 ad$momentum[i], ad$total[i], ad$label[i]))
   }
   cat("\n\u8bf4\u660e: \u8d8b\u52bf=\u6280\u672f\u9762(MA/MACD/RSI/\u5e03\u6797/\u91cf\u4ef7), \u4f30\u503c=\u57fa\u672c\u9762(PE/PB/ROE/\u80a1\u606f), \u52a8\u91cf=60\u65e5\u6da8\u8dcc\u5386\u53f2\u5206\u4f4d.\n")
@@ -36,7 +36,7 @@ advice_report <- function(ad) {
 #' @export
 plot_stock <- function(df, code = "", file = NULL) {
   cl <- df$close
-  bb <- bollinger(cl); r <- rsi(cl); mc <- macd(cl)
+  bb <- bollinger(cl); r <- rsi(cl); mc <- macd(cl); kd <- kdj(df)
   if (!is.null(file)) grDevices::png(file, width = 1200, height = 900, res = 110)
   on.exit(if (!is.null(file)) grDevices::dev.off(), add = TRUE)
   graphics::par(mfrow = c(4, 1), mar = c(1.5, 4, 2.5, 1), oma = c(3, 0, 0, 0))
@@ -44,9 +44,21 @@ plot_stock <- function(df, code = "", file = NULL) {
                  ylab = "\u4ef7\u683c", xaxt = "n")
   graphics::lines(ma(cl, 10), col = "orange"); graphics::lines(ma(cl, 30), col = "blue")
   graphics::lines(bb$upper, col = "gray", lty = 2); graphics::lines(bb$lower, col = "gray", lty = 2)
+  tp <- trade_points(data.frame(date = df$date, open = df$open, high = df$high,
+                                low = df$low, close = cl, volume = df$volume))
+  bi <- which(tp$signal > 0); si <- which(tp$signal < 0)
+  if (length(bi)) graphics::points(bi, df$low[bi] * 0.985, pch = 24,
+                                   col = "red", bg = "red", cex = 1.3)
+  if (length(si)) graphics::points(si, df$high[si] * 1.015, pch = 25,
+                                   col = "darkgreen", bg = "darkgreen", cex = 1.3)
+  graphics::legend("topleft", legend = c("\u4e70\u5165", "\u5356\u51fa"), pch = c(24, 25),
+                   col = c("red", "darkgreen"), pt.bg = c("red", "darkgreen"),
+                   bty = "n", cex = 0.8)
   graphics::barplot(df$volume, border = NA, col = "steelblue", ylab = "\u6210\u4ea4\u91cf", xaxt = "n")
-  graphics::plot(r, type = "l", ylim = c(0, 100), ylab = "RSI", xaxt = "n", col = "purple")
-  graphics::abline(h = c(30, 70), lty = 2, col = "gray")
+  graphics::plot(kd$k, type = "l", ylim = range(c(kd$k, kd$d, kd$j), na.rm = TRUE),
+                 ylab = "KDJ", xaxt = "n", col = "blue")
+  graphics::lines(kd$d, col = "orange"); graphics::lines(kd$j, col = "purple")
+  graphics::abline(h = c(20, 80), lty = 2, col = "gray")
   graphics::barplot(mc$hist, border = NA, col = ifelse(mc$hist > 0, "red", "green"),
                     ylab = "MACD", names.arg = "")
   graphics::axis(1, at = seq(1, nrow(df), length.out = 6),

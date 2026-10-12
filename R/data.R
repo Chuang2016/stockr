@@ -128,8 +128,8 @@ stk_quote <- function(code) {
     price   = num(4), prev_close = num(5), open = num(6),
     high    = num(34), low = num(35),
     pct_chg = num(33),
-    volume  = num(37),            # 手
-    amount  = num(38),            # 万元
+    volume  = num(37),            # \u624b
+    amount  = num(38),            # \u4e07\u5143
     time    = if (length(f) >= 31) f[31] else NA_character_
   )
 }

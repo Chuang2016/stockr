@@ -11,7 +11,8 @@
 | 模块 | 函数 | 说明 |
 |---|---|---|
 | 数据获取 | `stk_history()`, `stk_quote()` | 新浪历史日K + 腾讯实时行情，纯 base R 解析 |
-| 技术指标 | `ma()`, `ema()`, `rsi()`, `macd()`, `bollinger()`, `atr()`, `roc()` | 全部向量化实现 |
+| 技术指标 | `ma()`, `ema()`, `rsi()`, `macd()`, `kdj()`, `bollinger()`, `atr()`, `roc()` | 全部向量化实现 |
+| 买卖点 | `trade_points()`, `latest_point()`, `position_from_points()` | KDJ+MACD 事件驱动买卖信号 |
 | 综合评分 | `trend_score()`, `value_score()`, `momentum_score()` | 趋势/估值/动量三维度 0–100 打分 |
 | 投资建议 | `advice()`, `advice_universe()`, `advice_report()` | 加权综合 + 中文建议标签 + 星级报告 |
 | 组合优化 | `opt_max_sharpe()`, `opt_min_var()`, `opt_risk_parity()`, `opt_equal()` | 多头组合权重优化 |
@@ -133,7 +134,45 @@ atr(df, 14)               # 平均真实波幅（仓位管理用）
 roc(df$close, 60)         # 60日涨跌幅%
 ```
 
-### 3. 组合优化：四种配仓方案
+### 3. 买卖点：KDJ + MACD 事件驱动
+
+```r
+df <- stk_history("600502", 250)
+
+# 全历史买卖点：日期、价格、方向(+1买/-1卖)、触发原因
+tp <- trade_points(df)
+tail(tp[tp$signal != 0, ])
+#          date close signal                    reason
+# 2026-09-09  4.48      1              J值超卖回升
+# 2026-09-10  4.48      1 KDJ金叉+MACD金叉+MACD红柱转正
+# 2026-09-11  4.41     -1     MACD死叉+MACD绿柱转负
+# 2026-09-24  4.16      1                   KDJ金叉
+# 2026-10-08  4.24      1      MACD金叉+MACD红柱转正
+
+# 最新一个可操作信号
+latest_point(df)
+# $side "买入"  $date 2026-10-08  $price 4.24  $reason "MACD金叉+MACD红柱转正"
+
+# 信号转持仓（买入开多、卖出清仓），直接喂给回测
+pos <- position_from_points(tp)
+backtest(df, pos)$metrics
+
+# 四联图自动标注买卖点（红▲买入 / 绿▼卖出）+ KDJ 副图
+plot_stock(df, "600502 安徽建工", file = "trade_points.png")
+```
+
+买卖规则（买入/卖出各 4 条，同日多空原因轧差）：
+
+| 方向 | KDJ | MACD |
+|---|---|---|
+| 买入 | K上穿D 且 K<50（低位金叉）；J值上穿20（超卖回升） | DIF上穿DEA（金叉）；红柱由负转正 |
+| 卖出 | K下穿D 且 K>50（高位死叉）；J值下穿80（超买回落） | DIF下穿DEA（死叉）；绿柱由正转负 |
+
+`advice_report()` 的每只股票行也自带最新信号（如"买入@10-08"），
+一眼看出现在该动手还是该观望。注意：震荡市中金叉/死叉会来回打脸
+（如上例 9/10 买入、9/11 卖出），信号是概率工具，务必配合仓位管理。
+
+### 4. 组合优化：四种配仓方案
 
 ```r
 pm <- ret_matrix(c("600502", "601669", "600966", "601908"), n = 250)
@@ -235,6 +274,9 @@ A: 评分随行情每天变化；且 `opt_max_sharpe()` 用随机搜索，
 
 ## 更新日志
 
+- **v0.2.0** (2026-10-12)：新增 KDJ 指标与 KDJ+MACD 买卖点
+  （`trade_points()`/`latest_point()`/`position_from_points()`），
+  投资建议报告自带最新买卖信号，四联图自动标注买卖点并新增 KDJ 副图。
 - **v0.1.0** (2026-10-12)：首个版本。数据获取、技术指标、三维度评分、
   中文投资建议、4 种组合优化、参数调优、回测、四联图；
   `R CMD check` 0 ERROR。

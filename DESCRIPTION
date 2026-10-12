@@ -1,6 +1,6 @@
 Package: stockr
 Title: Stock Screening, Signal and Portfolio Tools for A-Shares
-Version: 0.1.0
+Version: 0.2.0
 Authors@R: person("Qingfeng", "Liu", email = "qingfeng@example.com",
     role = c("aut", "cre"))
 Description: A pure base-R toolkit for A-share investment decision support:

@@ -91,3 +91,37 @@ roc <- function(x, n = 10) {
   x <- as.numeric(x)
   c(rep(NA_real_, n), 100 * (x[-(1:n)] / x[1:(length(x) - n)] - 1))
 }
+
+#' KDJ stochastic indicator
+#'
+#' RSV = (C - LLV(L,9)) / (HHV(H,9) - LLV(L,9)) * 100;
+#' K = SMA(RSV,3,1), D = SMA(K,3,1), J = 3K - 2D (Chinese convention weights).
+#' @param df data.frame with high, low, close.
+#' @param n RSV window (default 9). @param k_smooth,d_smooth smoothing (default 3,3).
+#' @return data.frame(k, d, j).
+#' @export
+kdj <- function(df, n = 9, k_smooth = 3, d_smooth = 3) {
+  h <- df$high; l <- df$low; c <- df$close
+  n <- as.integer(n)
+  roll_min <- function(x) vapply(seq_along(x), function(i)
+    if (i < n || any(is.na(x[(i - n + 1):i]))) NA_real_ else min(x[(i - n + 1):i]),
+    numeric(1))
+  roll_max <- function(x) vapply(seq_along(x), function(i)
+    if (i < n || any(is.na(x[(i - n + 1):i]))) NA_real_ else max(x[(i - n + 1):i]),
+    numeric(1))
+  llv <- roll_min(l); hhv <- roll_max(h)
+  rsv <- 100 * (c - llv) / (hhv - llv)
+  sma_w <- function(x, N, M = 1) {
+    out <- rep(NA_real_, length(x))
+    ok <- which(!is.na(x))
+    if (!length(ok)) return(out)
+    y <- x[ok[1]]
+    for (i in ok) {
+      y <- if (i == ok[1]) x[i] else (M * x[i] + (N - M) * y) / N
+      out[i] <- y
+    }
+    out
+  }
+  K <- sma_w(rsv, k_smooth); D <- sma_w(K, d_smooth)
+  data.frame(k = K, d = D, j = 3 * K - 2 * D)
+}

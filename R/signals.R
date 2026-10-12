@@ -69,12 +69,12 @@ value_score <- function(code) {
 
 .advice_label <- function(total) {
   if (is.na(total)) return(NA_character_)
-  if (total >= 75) "\u5f3a\u70c8\u63a8\u8350" else      # 强烈推荐
-  if (total >= 60) "\u63a8\u8350" else                  # 推荐
-  if (total >= 45) "\u4e2d\u6027\u504f\u591a" else      # 中性偏多
-  if (total >= 35) "\u4e2d\u6027" else                  # 中性
-  if (total >= 25) "\u8c28\u614e" else                   # 谨慎
-                   "\u56de\u907f"                      # 回避
+  if (total >= 75) "\u5f3a\u70c8\u63a8\u8350" else      # \u5f3a\u70c8\u63a8\u8350
+  if (total >= 60) "\u63a8\u8350" else                  # \u63a8\u8350
+  if (total >= 45) "\u4e2d\u6027\u504f\u591a" else      # \u4e2d\u6027\u504f\u591a
+  if (total >= 35) "\u4e2d\u6027" else                  # \u4e2d\u6027
+  if (total >= 25) "\u8c28\u614e" else                   # \u8c28\u614e
+                   "\u56de\u907f"                      # \u56de\u907f
 }
 
 #' Investment advice for one stock
@@ -97,11 +97,19 @@ advice <- function(code, w = c(0.5, 0.3, 0.2), n = 300) {
   if (!length(nm)) nm <- code6
   tr <- trend_score(df); mo <- momentum_score(df); va <- value_score(code6)
   total <- w[1] * tr + w[2] * va + w[3] * mo
+  tp <- trade_points(df)
+  nz <- which(tp$signal != 0)
+  sig_txt <- if (length(nz)) {
+    i <- max(nz)
+    paste0(if (tp$signal[i] > 0) "\u4e70\u5165" else "\u5356\u51fa",
+           "@", format(tp$date[i], "%m-%d"))
+  } else "-"
   data.frame(code = code6, name = nm, price = .last(df$close),
              pct_chg = 100 * (.last(df$close) / df$close[nrow(df) - 1] - 1),
              trend = round(tr, 1), value = round(va, 1),
              momentum = round(mo, 1), total = round(total, 1),
-             label = .advice_label(total), stringsAsFactors = FALSE)
+             label = .advice_label(total), signal = sig_txt,
+             stringsAsFactors = FALSE)
 }
 
 #' Ranked advice for the whole universe
